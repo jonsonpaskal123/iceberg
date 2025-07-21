@@ -1,13 +1,31 @@
 from pyspark.sql import SparkSession
 
 def main():
-    spark = SparkSession.builder         .appName("Elastic-to-Iceberg")         .master("local[*]")         .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3,org.apache.iceberg:iceberg-spark-runtime-3.4_2.12:1.4.2,org.projectnessie:nessie-spark-extensions-3.4_2.12:0.75.0")         .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,org.projectnessie.spark.extensions.NessieSparkSessionExtensions")         .config("spark.sql.catalog.nessie", "org.apache.iceberg.spark.SparkCatalog")         .config("spark.sql.catalog.nessie.uri", "http://nessie:19120/api/v1")         .config("spark.sql.catalog.nessie.ref", "main")         .config("spark.sql.catalog.nessie.authentication.type", "NONE")         .config("spark.sql.catalog.nessie.catalog-impl", "org.apache.iceberg.nessie.NessieCatalog")         .config("spark.sql.catalog.nessie.warehouse", "s3a://warehouse")         .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000")         .config("spark.hadoop.fs.s3a.access.key", "admin")         .config("spark.hadoop.fs.s3a.secret.key", "password")         .config("spark.hadoop.fs.s3a.path.style.access", "true")         .getOrCreate()
+    spark = SparkSession.builder \
+        .appName("Elastic-to-Iceberg") \
+        .master("local[*]") \
+        .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,org.projectnessie.spark.extensions.NessieSparkSessionExtensions") \
+        .config("spark.sql.catalog.nessie", "org.apache.iceberg.spark.SparkCatalog") \
+        .config("spark.sql.catalog.nessie.uri", "http://nessie:19120/api/v1") \
+        .config("spark.sql.catalog.nessie.ref", "main") \
+        .config("spark.sql.catalog.nessie.authentication.type", "NONE") \
+        .config("spark.sql.catalog.nessie.catalog-impl", "org.apache.iceberg.nessie.NessieCatalog") \
+        .config("spark.sql.catalog.nessie.warehouse", "s3a://warehouse") \
+        .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
+        .config("spark.hadoop.fs.s3a.access.key", "admin") \
+        .config("spark.hadoop.fs.s3a.secret.key", "password") \
+        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
+        .getOrCreate()
 
     print("Spark session created successfully.")
 
     # خواندن داده از Elasticsearch
     print("Reading data from Elasticsearch...")
-    elastic_df = spark.read.format("org.elasticsearch.spark.sql")         .option("es.nodes", "elasticsearch")         .option("es.port", "9200")         .option("es.resource", "app_logs")         .load()
+    elastic_df = spark.read.format("org.elasticsearch.spark.sql") \
+        .option("es.nodes", "elasticsearch") \
+        .option("es.port", "9200") \
+        .option("es.resource", "app_logs") \
+        .load()
     print("Data read from Elasticsearch:")
     elastic_df.show()
 

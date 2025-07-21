@@ -129,7 +129,6 @@ def main():
     spark = SparkSession.builder \
         .appName("Elastic-to-Iceberg") \
         .master("local[*]") \
-        .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3,org.apache.iceberg:iceberg-spark-runtime-3.4_2.12:1.4.2,org.projectnessie:nessie-spark-extensions-3.4_2.12:0.75.0") \
         .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,org.projectnessie.spark.extensions.NessieSparkSessionExtensions") \
         .config("spark.sql.catalog.nessie", "org.apache.iceberg.spark.SparkCatalog") \
         .config("spark.sql.catalog.nessie.uri", "http://nessie:19120/api/v1") \
@@ -194,7 +193,9 @@ if __name__ == "__main__":
 4.  با استفاده از Kibana (`http://localhost:5601`) داده‌های اولیه را در Elasticsearch درج کنید.
 5.  اسکریپت Spark را با دستور زیر اجرا کنید:
     ```bash
-    docker exec spark-runner spark-submit /home/jovyan/work/scripts/01_elastic_to_iceberg.py
+    docker exec spark-runner spark-submit \
+      --packages org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3,org.apache.iceberg:iceberg-spark-runtime-3.4_2.12:1.4.2,org.projectnessie:nessie-spark-extensions-3.4_2.12:0.75.0 \
+      /home/jovyan/work/scripts/01_elastic_to_iceberg.py
     ```
 
 ```
