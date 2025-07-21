@@ -35,34 +35,13 @@ services:
       - MINIO_ROOT_PASSWORD=password
     command: server /data --console-address ":9001"
 
-  spark-iceberg-nessie:
-    image: tabulario/spark-iceberg
-    container_name: spark-iceberg-nessie
+  spark-runner:
+    image: jupyter/pyspark-notebook:latest
+    container_name: spark-runner
     depends_on:
       - nessie
       - minio
       - elasticsearch
     volumes:
-      - ./notebooks:/home/iceberg/notebooks
-    ports:
-      - "8888:8888"
-      - "4040:4040"
-    environment:
-      - SPARK_HOME=/opt/spark
-      - SPARK_MASTER_HOST=spark-iceberg-nessie
-    command: >
-      /opt/spark/bin/pyspark
-      --master local[*]
-      --packages org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3
-      --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,org.projectnessie.spark.extensions.NessieSparkSessionExtensions
-      --conf spark.sql.catalog.nessie=org.apache.iceberg.spark.SparkCatalog
-      --conf spark.sql.catalog.nessie.uri=http://nessie:19120/api/v1
-      --conf spark.sql.catalog.nessie.ref=main
-      --conf spark.sql.catalog.nessie.authentication.type=NONE
-      --conf spark.sql.catalog.nessie.catalog-impl=org.apache.iceberg.nessie.NessieCatalog
-      --conf spark.sql.catalog.nessie.warehouse=s3a://warehouse
-      --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000
-      --conf spark.hadoop.fs.s3a.access.key=admin
-      --conf spark.hadoop.fs.s3a.secret.key=password
-      --conf spark.hadoop.fs.s3a.path.style.access=true
-      --conf spark.driver.memory=2g
+      - ./scripts:/home/jovyan/work/scripts
+    command: tail -f /dev/null

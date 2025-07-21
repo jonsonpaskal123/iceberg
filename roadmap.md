@@ -18,8 +18,8 @@
 ```
 /iceberg-nessie-project
 |-- docker-compose.yml
-|-- notebooks/
-|   `-- 01-elastic-to-iceberg.ipynb
+|-- scripts/
+|   `-- 01_elastic_to_iceberg.py
 `-- roadmap.md
 ```
 
@@ -27,7 +27,7 @@
 
 ## مرحله ۱: ایجاد فایل Docker Compose
 
-محتوای فایل `docker-compose.yml` را به شکل زیر ایجاد می‌کنیم. این فایل سرویس‌های Elasticsearch و Kibana را نیز به پشته ما اضافه می‌کند.
+محتوای فایل `docker-compose.yml` را به شکل زیر ایجاد می‌کنیم. سرویس Spark طوری تنظیم می‌شود که همیشه در حال اجرا باقی بماند تا بتوانیم اسکریپت خود را در آن اجرا کنیم.
 
 ```yaml
 version: '3'
@@ -67,128 +67,107 @@ services:
       - MINIO_ROOT_PASSWORD=password
     command: server /data --console-address ":9001"
 
-  spark-iceberg-nessie:
-    image: tabulario/spark-iceberg
-    container_name: spark-iceberg-nessie
+  spark-runner:
+    image: jupyter/pyspark-notebook:latest
+    container_name: spark-runner
     depends_on:
       - nessie
       - minio
       - elasticsearch
     volumes:
-      - ./notebooks:/home/iceberg/notebooks
-    ports:
-      - "8888:8888"
-      - "4040:4040"
-    environment:
-      - SPARK_HOME=/opt/spark
-      - SPARK_MASTER_HOST=spark-iceberg-nessie
-    command: >
-      /opt/spark/bin/pyspark
-      --master local[*]
-      --packages org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3
-      --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,org.projectnessie.spark.extensions.NessieSparkSessionExtensions
-      --conf spark.sql.catalog.nessie=org.apache.iceberg.spark.SparkCatalog
-      --conf spark.sql.catalog.nessie.uri=http://nessie:19120/api/v1
-      --conf spark.sql.catalog.nessie.ref=main
-      --conf spark.sql.catalog.nessie.authentication.type=NONE
-      --conf spark.sql.catalog.nessie.catalog-impl=org.apache.iceberg.nessie.NessieCatalog
-      --conf spark.sql.catalog.nessie.warehouse=s3a://warehouse
-      --conf spark.hadoop.fs.s3a.endpoint=http://minio:9000
-      --conf spark.hadoop.fs.s3a.access.key=admin
-      --conf spark.hadoop.fs.s3a.secret.key=password
-      --conf spark.hadoop.fs.s3a.path.style.access=true
-      --conf spark.driver.memory=2g
+      - ./scripts:/home/jovyan/work/scripts
+    command: tail -f /dev/null
 ```
 
 ---
 
 ## مرحله ۲: بالا آوردن سرویس‌ها
 
-با استفاده از دستور زیر، تمام سرویس‌هایی که در فایل `docker-compose.yml` تعریف کرده‌ایم را راه‌اندازی می‌کنیم.
+با استفاده از دستور زیر، تمام سرویس‌ها را راه‌اندازی می‌کنیم.
 
 ```bash
 docker-compose up -d
 ```
 
-پس از اجرای این دستور، می‌توانید با دستور `docker ps` وضعیت کانتینرها را مشاهده کنید و مطمئن شوید که تمام سرویس‌ها (Elasticsearch, Kibana, Nessie, MinIO, Spark) در حال اجرا هستند.
-
 ---
 
-## مرحله ۳: ایجاد و اجرای نوت‌بوک Spark
+## مرحله ۳: ایجاد اسکریپت Spark
 
-یک نوت‌بوک جدید در پوشه `notebooks` به نام `01-elastic-to-iceberg.ipynb` ایجاد کرده و کدهای زیر را در سلول‌های جداگانه اجرا می‌کنیم.
-
-### الف) درج داده در Elasticsearch
-
-ابتدا با استفاده از Kibana (در آدرس `http://localhost:5601`) یا دستورات cURL، یک ایندکس و چند داده نمونه در Elasticsearch ایجاد می‌کنیم.
-
-```bash
-# In Kibana Dev Tools or via cURL
-PUT /app_logs
-{
-  "mappings": {
-    "properties": {
-      "ts": { "type": "date" },
-      "level": { "type": "keyword" },
-      "message": { "type": "text" }
-    }
-  }
-}
-
-POST /app_logs/_doc
-{ "ts": "2023-10-27T10:00:00Z", "level": "INFO", "message": "User logged in" }
-
-POST /app_logs/_doc
-{ "ts": "2023-10-27T10:05:00Z", "level": "WARNING", "message": "Disk space is running low" }
-```
-
-### ب) خواندن داده از Elasticsearch در Spark
-
-حالا در نوت‌بوک Spark، داده‌ها را از ایندکس `app_logs` می‌خوانیم.
+یک فایل پایتون در پوشه `scripts` به نام `01_elastic_to_iceberg.py` ایجاد کرده و کدهای زیر را در آن قرار می‌دهیم.
 
 ```python
-# In a PySpark cell
+from pyspark.sql import SparkSession
 
-elastic_df = spark.read.format("org.elasticsearch.spark.sql") \
-    .option("es.nodes", "elasticsearch") \
-    .option("es.port", "9200") \
-    .option("es.resource", "app_logs") \
-    .load()
+def main():
+    spark = SparkSession.builder \
+        .appName("Elastic-to-Iceberg") \
+        .master("local[*]") \
+        .config("spark.jars.packages", "org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3,org.apache.iceberg:iceberg-spark-runtime-3.4_2.12:1.4.2,org.projectnessie:nessie-spark-extensions-3.4_2.12:0.75.0") \
+        .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,org.projectnessie.spark.extensions.NessieSparkSessionExtensions") \
+        .config("spark.sql.catalog.nessie", "org.apache.iceberg.spark.SparkCatalog") \
+        .config("spark.sql.catalog.nessie.uri", "http://nessie:19120/api/v1") \
+        .config("spark.sql.catalog.nessie.ref", "main") \
+        .config("spark.sql.catalog.nessie.authentication.type", "NONE") \
+        .config("spark.sql.catalog.nessie.catalog-impl", "org.apache.iceberg.nessie.NessieCatalog") \
+        .config("spark.sql.catalog.nessie.warehouse", "s3a://warehouse") \
+        .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
+        .config("spark.hadoop.fs.s3a.access.key", "admin") \
+        .config("spark.hadoop.fs.s3a.secret.key", "password") \
+        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
+        .getOrCreate()
 
-elastic_df.show()
+    print("Spark session created successfully.")
+
+    # خواندن داده از Elasticsearch
+    print("Reading data from Elasticsearch...")
+    elastic_df = spark.read.format("org.elasticsearch.spark.sql") \
+        .option("es.nodes", "elasticsearch") \
+        .option("es.port", "9200") \
+        .option("es.resource", "app_logs") \
+        .load()
+    print("Data read from Elasticsearch:")
+    elastic_df.show()
+
+    # ایجاد جدول آیسبرگ
+    print("Creating Iceberg table...")
+    spark.sql("""
+        CREATE TABLE IF NOT EXISTS nessie.logs (
+          ts TIMESTAMP,
+          level STRING,
+          message STRING
+        )
+        PARTITIONED BY (level)
+    """)
+    print("Iceberg table 'nessie.logs' created.")
+
+    # نوشتن داده‌ها در جدول آیسبرگ
+    print("Writing data to Iceberg table...")
+    elastic_df.write.format("iceberg").mode("append").save("nessie.logs")
+    print("Data written to Iceberg successfully.")
+
+    # بررسی داده‌های نوشته شده
+    print("Verifying data in Iceberg table:")
+    iceberg_df = spark.table("nessie.logs")
+    iceberg_df.show()
+
+    spark.stop()
+
+if __name__ == "__main__":
+    main()
+
 ```
-
-### ج) ایجاد و نوشتن در جدول آیسبرگ
-
-داده‌های خوانده شده را در یک جدول آیسبرگ که توسط Nessie مدیریت می‌شود، می‌نویسیم.
-
-```sql
--- Create the Iceberg table
-CREATE TABLE nessie.logs (
-  ts TIMESTAMP,
-  level STRING,
-  message STRING
-)
-PARTITIONED BY (level);
-```
-
-```python
-# Write the DataFrame to the Iceberg table
-elastic_df.write.format("iceberg").mode("append").save("nessie.logs")
-```
-
-### د) بررسی داده‌ها و استفاده از Nessie
-
-از اینجا به بعد، می‌توانید تمام قابلیت‌های Nessie مانند **branching**، **merging** و **time travel** را که در نسخه قبلی نقشه راه توضیح داده شد، روی جدول `nessie.logs` که داده‌های آن از Elasticsearch آمده است، پیاده‌سازی کنید.
 
 ---
 
 ## مرحله ۴: نحوه اجرا
 
 1.  فایل `docker-compose.yml` و `roadmap.md` را در ریشه پروژه ایجاد کنید.
-2.  پوشه `notebooks` را بسازید.
+2.  پوشه `scripts` را بسازید و فایل `01_elastic_to_iceberg.py` را در آن قرار دهید.
 3.  دستور `docker-compose up -d` را اجرا کنید تا تمام سرویس‌ها راه‌اندازی شوند.
-4.  در مرورگر خود آدرس Kibana (`http://localhost:5601`) را باز کرده و داده‌های اولیه را درج کنید.
-5.  در مرورگر خود آدرس JupyterLab (`http://localhost:8888`) را باز کنید.
-6.  توکن JupyterLab را از لاگ‌های کانتینر `spark-iceberg-nessie` بردارید (`docker logs spark-iceberg-nessie`).
-7.  یک نوت‌بوک جدید بسازید و مراحل بالا را اجرا کنید.
+4.  با استفاده از Kibana (`http://localhost:5601`) داده‌های اولیه را در Elasticsearch درج کنید.
+5.  اسکریپت Spark را با دستور زیر اجرا کنید:
+    ```bash
+    docker exec spark-runner spark-submit /home/jovyan/work/scripts/01_elastic_to_iceberg.py
+    ```
+
+```
