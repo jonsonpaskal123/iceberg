@@ -174,42 +174,42 @@ graph LR
 ```mermaid
 graph TD
     subgraph "مرحله ۱: استخراج و تبدیل (ETL)"
-        A[ایندکس Elasticsearch: `app_logs`]
+        A["ایندکس Elasticsearch: app_logs"]
         B{Apache Spark Batch Job}
         C(DataFrame آماده برای ورود)
     end
 
     subgraph "مرحله ۲: نوشتن در آیسبرگ و تعامل با کاتالوگ"
-        D{جدول آیسبرگ: `logs`}
+        D{جدول آیسبرگ: logs}
         E(metadata-v2.json)
         F[کاتالوگ آیسبرگ]
-        G((Pointer: logs -> metadata-v2.json))
+        G(["Pointer: logs -> metadata-v2.json"])
     end
 
     subgraph "مرحله ۳: پارتیشن‌بندی و بهینه‌سازی"
-        H{Partition Transform: `days(event_timestamp)`}
+        H{"Partition Transform: days(event_timestamp)"}
         I[فایل‌های Parquet در پارتیشن‌های روزانه]
     end
 
     subgraph "مرحله ۴: خواندن بهینه داده"
         J[کاربر/ابزار BI]
         K{موتور کوئری (Trino/Spark)}
-        L{بررسی آمار (min/max) در مانیفست‌ها}
+        L{"بررسی آمار (min/max) در مانیفست‌ها"}
     end
 
     A -- "۱. خواندن داده" --> B
     B -- "۲. پاکسازی و تبدیل داده (ETL)" --> C
-    C -- "۳. نوشتن در جدول `logs`" --> D
+    C -- "۳. نوشتن در جدول logs" --> D
     D -- "۴. ایجاد فایل فراداده جدید" --> E
     D -- "۷. پارتیشن‌بندی پنهان" --> H
     E -- "۵. درخواست آپدیت" --> F
     F -- "۶. آپدیت اتمی اشاره‌گر (CAS)" --> G
-    H -- "مقدار `2023-10-23T14:00` به `2023-10-23` تبدیل می‌شود" --> I
-    J -- "۸. کوئری: `WHERE level = 'ERROR'`" --> K
+    H -- "مقدار 2023-10-23T14:00 به 2023-10-23 تبدیل می‌شود" --> I
+    J -- "۸. کوئری: WHERE level = ERROR" --> K
     K -- "۹. درخواست فراداده از کاتالوگ" --> F
     K -- "۱۰. دریافت آدرس فراداده فعلی" --> G
     K -- "۱۱. اعمال Data Skipping" --> L
-    L -- "فقط فایل‌های حاوی `ERROR` خوانده می‌شوند" --> I
+    L -- "فقط فایل‌های حاوی ERROR خوانده می‌شوند" --> I
 
     style F fill:#f9f,stroke:#333,stroke-width:2px
     style G fill:#f9f,stroke:#333,stroke-width:2px
