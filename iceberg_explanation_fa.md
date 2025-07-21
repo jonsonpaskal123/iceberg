@@ -35,7 +35,7 @@ graph TD
     D -- می‌خواند/می‌نویسد --> B
     E -- می‌خواند/می‌نویسد --> B
 
-    style B fill:#cce5ff,stroke:#333,stroke-width:2px
+    style B fill:#f0f0f0,stroke:#333,stroke-width:2px,color:#333
 ```
 
 ---
@@ -112,8 +112,8 @@ graph TD
         end
 
         A --> B
-        style B fill:#cce5ff,stroke:#333,stroke-width:2px
-        style C fill:#e5ccff,stroke:#333,stroke-width:2px
+        style B fill:#f0f0f0,stroke:#333,stroke-width:2px,color:#333
+        style C fill:#e0e0e0,stroke:#333,stroke-width:2px,color:#333
     ```
 
 *   **چگونه کار می‌کند؟**
