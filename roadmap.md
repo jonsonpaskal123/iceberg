@@ -1,42 +1,55 @@
-# نقشه راه پروژه عملی آیسبرگ و Nessie
+# نقشه راه پروژه عملی: خواندن از Elasticsearch و ذخیره در Iceberg با Nessie
 
-این مستند، نقشه راه گام به گام برای ساخت یک پروژه کوچک اما کامل با استفاده از Apache Iceberg و کاتالوگ Nessie است. هدف این است که تمام مفاهیمی که یاد گرفتیم را در یک سناریوی واقعی پیاده‌سازی کنیم.
+این مستند، نقشه راه گام به گام برای ساخت یک پروژه کامل است که در آن داده‌ها از Elasticsearch خوانده شده و در یک جدول Apache Iceberg با استفاده از کاتالوگ Nessie ذخیره می‌شوند.
 
 **پشته تکنولوژی (Technology Stack):**
 
+*   **منبع داده:** Elasticsearch
 *   **پردازش:** Apache Spark
 *   **فرمت جدول:** Apache Iceberg
-*   **کاتالوگ:** Nessie (برای قابلیت‌های Git-مانند)
-*   **ذخیره‌سازی:** MinIO (به عنوان یک Object Storage سازگار با S3)
-*   **ارکستراسیون:** Docker Compose (برای راه‌اندازی تمام سرویس‌ها)
+*   **کاتالوگ:** Nessie
+*   **ذخیره‌سازی:** MinIO
+*   **ارکستراسیون:** Docker Compose
 
 ---
 
 ## ساختار پروژه
 
-ابتدا، ساختار پوشه‌های پروژه را به شکل زیر ایجاد می‌کنیم:
-
 ```
 /iceberg-nessie-project
 |-- docker-compose.yml
 |-- notebooks/
-|   `-- 01-iceberg-nessie-demo.ipynb
+|   `-- 01-elastic-to-iceberg.ipynb
 `-- roadmap.md
 ```
-
-*   `docker-compose.yml`: برای تعریف و راه‌اندازی سرویس‌های Nessie، MinIO و Spark.
-*   `notebooks/`: نوت‌بوک‌های Jupyter که کدهای Spark ما در آن قرار می‌گیرد.
 
 ---
 
 ## مرحله ۱: راه‌اندازی زیرساخت با Docker Compose
 
-محتوای فایل `docker-compose.yml` را به شکل زیر ایجاد می‌کنیم. این فایل تمام سرویس‌های مورد نیاز ما را با تنظیمات صحیح راه‌اندازی می‌کند.
+محتوای فایل `docker-compose.yml` را به شکل زیر ایجاد می‌کنیم. این فایل سرویس‌های Elasticsearch و Kibana را نیز به پشته ما اضافه می‌کند.
 
 ```yaml
 version: '3'
 
 services:
+  elasticsearch:
+    image: elasticsearch:8.11.1
+    container_name: elasticsearch
+    environment:
+      - "discovery.type=single-node"
+      - "xpack.security.enabled=false"
+    ports:
+      - "9200:9200"
+
+  kibana:
+    image: kibana:8.11.1
+    container_name: kibana
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
   nessie:
     image: projectnessie/nessie:latest
     container_name: nessie
@@ -60,6 +73,7 @@ services:
     depends_on:
       - nessie
       - minio
+      - elasticsearch
     volumes:
       - ./notebooks:/home/iceberg/notebooks
     ports:
@@ -71,6 +85,7 @@ services:
     command: >
       /opt/spark/bin/pyspark
       --master local[*]
+      --packages org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3
       --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,org.projectnessie.spark.extensions.NessieSparkSessionExtensions
       --conf spark.sql.catalog.nessie=org.apache.iceberg.spark.SparkCatalog
       --conf spark.sql.catalog.nessie.uri=http://nessie:19120/api/v1
@@ -89,22 +104,54 @@ services:
 
 ## مرحله ۲: ایجاد و اجرای نوت‌بوک Spark
 
-یک نوت‌بوک جدید در پوشه `notebooks` به نام `01-iceberg-nessie-demo.ipynb` ایجاد کرده و کدهای زیر را در سلول‌های جداگانه اجرا می‌کنیم.
+یک نوت‌بوک جدید در پوشه `notebooks` به نام `01-elastic-to-iceberg.ipynb` ایجاد کرده و کدهای زیر را در سلول‌های جداگانه اجرا می‌کنیم.
 
-### الف) اتصال و بررسی Nessie
+### الف) درج داده در Elasticsearch
 
-برای اطمینان از اینکه Spark به درستی به Nessie متصل شده است، لیست شاخه‌ها (references) را می‌گیریم.
+ابتدا با استفاده از Kibana (در آدرس `http://localhost:5601`) یا دستورات cURL، یک ایندکس و چند داده نمونه در Elasticsearch ایجاد می‌کنیم.
 
-```sql
--- In a SQL cell
-LIST REFERENCES IN nessie;
+```bash
+# In Kibana Dev Tools or via cURL
+PUT /app_logs
+{
+  "mappings": {
+    "properties": {
+      "ts": { "type": "date" },
+      "level": { "type": "keyword" },
+      "message": { "type": "text" }
+    }
+  }
+}
+
+POST /app_logs/_doc
+{ "ts": "2023-10-27T10:00:00Z", "level": "INFO", "message": "User logged in" }
+
+POST /app_logs/_doc
+{ "ts": "2023-10-27T10:05:00Z", "level": "WARNING", "message": "Disk space is running low" }
 ```
 
-### ب) ایجاد جدول آیسبرگ
+### ب) خواندن داده از Elasticsearch در Spark
 
-یک جدول برای ذخیره لاگ‌ها با پارتیشن‌بندی بر اساس سطح لاگ (`level`) ایجاد می‌کنیم.
+حالا در نوت‌بوک Spark، داده‌ها را از ایندکس `app_logs` می‌خوانیم.
+
+```python
+# In a PySpark cell
+
+elastic_df = spark.read.format("org.elasticsearch.spark.sql") \
+    .option("es.nodes", "elasticsearch") \
+    .option("es.port", "9200") \
+    .option("es.resource", "app_logs") \
+    .load()
+
+elastic_df.show()
+```
+
+### ج) ایجاد و نوشتن در جدول آیسبرگ
+
+داده‌های خوانده شده را در یک جدول آیسبرگ که توسط Nessie مدیریت می‌شود، می‌نویسیم.
 
 ```sql
+-- Create the Iceberg table
 CREATE TABLE nessie.logs (
   ts TIMESTAMP,
   level STRING,
@@ -113,68 +160,14 @@ CREATE TABLE nessie.logs (
 PARTITIONED BY (level);
 ```
 
-### ج) درج داده‌های اولیه
-
-چند رکورد اولیه در شاخه `main` درج می‌کنیم.
-
-```sql
-INSERT INTO nessie.logs VALUES
-(current_timestamp(), 'INFO', 'User logged in'),
-(current_timestamp(), 'WARNING', 'Disk space is running low'),
-(current_timestamp(), 'INFO', 'Data processed successfully');
+```python
+# Write the DataFrame to the Iceberg table
+elastic_df.write.format("iceberg").mode("append").save("nessie.logs")
 ```
 
-### د) استفاده از شاخه‌ها (Branching) برای ETL
+### د) بررسی داده‌ها و استفاده از Nessie
 
-حالا قدرت واقعی Nessie را نمایش می‌دهیم. یک شاخه جدید برای فرآیند ETL ایجاد می‌کنیم.
-
-```sql
--- Create a new branch for our ETL job
-CREATE BRANCH etl_branch IN nessie;
-
--- Switch to the new branch
-USE REFERENCE etl_branch IN nessie;
-
--- Insert new data only in this branch
-INSERT INTO nessie.logs VALUES
-(current_timestamp(), 'ERROR', 'Failed to connect to database'),
-(current_timestamp(), 'INFO', 'New data batch arrived');
-```
-
-حالا اگر به شاخه `main` برگردیم، می‌بینیم که داده‌های جدید در آن وجود ندارند.
-
-```sql
-USE REFERENCE main IN nessie;
-SELECT * FROM nessie.logs;
-```
-
-### ه) ادغام (Merge) شاخه
-
-پس از تایید داده‌های جدید، شاخه `etl_branch` را با `main` ادغام می‌کنیم.
-
-```sql
-MERGE BRANCH etl_branch INTO main IN nessie;
-```
-
-### و) سفر در زمان (Time Travel)
-
-می‌توانیم وضعیت جدول را قبل از ادغام مشاهده کنیم.
-
-```sql
--- Find the commit hash before the merge
-LIST REFERENCES IN nessie;
-
--- Query the table at a specific commit
-SELECT * FROM nessie.logs VERSION AS OF 'some_commit_hash_before_merge';
-```
-
-### ز) تکامل طرح‌واره (Schema Evolution)
-
-یک ستون جدید به جدول اضافه می‌کنیم بدون اینکه نیاز به بازنویسی داده‌ها باشد.
-
-```sql
-ALTER TABLE nessie.logs ADD COLUMN source_ip STRING;
-```
+از اینجا به بعد، می‌توانید تمام قابلیت‌های Nessie مانند **branching**، **merging** و **time travel** را که در نسخه قبلی نقشه راه توضیح داده شد، روی جدول `nessie.logs` که داده‌های آن از Elasticsearch آمده است، پیاده‌سازی کنید.
 
 ---
 
@@ -183,6 +176,7 @@ ALTER TABLE nessie.logs ADD COLUMN source_ip STRING;
 1.  فایل `docker-compose.yml` و `roadmap.md` را در ریشه پروژه ایجاد کنید.
 2.  پوشه `notebooks` را بسازید.
 3.  دستور `docker-compose up -d` را اجرا کنید تا تمام سرویس‌ها راه‌اندازی شوند.
-4.  در مرورگر خود آدرس `http://localhost:8888` را باز کنید.
-5.  توکن JupyterLab را از لاگ‌های کانتینر `spark-iceberg-nessie` بردارید (`docker logs spark-iceberg-nessie`).
-6.  یک نوت‌بوک جدید بسازید و مراحل بالا را اجرا کنید.
+4.  در مرورگر خود آدرس Kibana (`http://localhost:5601`) را باز کرده و داده‌های اولیه را درج کنید.
+5.  در مرورگر خود آدرس JupyterLab (`http://localhost:8888`) را باز کنید.
+6.  توکن JupyterLab را از لاگ‌های کانتینر `spark-iceberg-nessie` بردارید (`docker logs spark-iceberg-nessie`).
+7.  یک نوت‌بوک جدید بسازید و مراحل بالا را اجرا کنید.
