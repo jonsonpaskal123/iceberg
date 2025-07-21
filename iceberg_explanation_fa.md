@@ -173,43 +173,43 @@ graph LR
 
 ```mermaid
 graph TD
-    subgraph "مرحله ۱: استخراج و تبدیل (ETL)"
-        A["ایندکس Elasticsearch: app_logs"]
-        B{Apache Spark Batch Job}
-        C(DataFrame آماده برای ورود)
+    subgraph "Stage 1 ETL"
+        A["Elasticsearch Index"]
+        B{Spark Job}
+        C(Ready DataFrame)
     end
 
-    subgraph "مرحله ۲: نوشتن در آیسبرگ و تعامل با کاتالوگ"
-        D{جدول آیسبرگ: logs}
-        E(metadata-v2.json)
-        F[کاتالوگ آیسبرگ]
-        G(["Pointer: logs -> metadata-v2.json"])
+    subgraph "Stage 2 Write to Iceberg"
+        D{Iceberg Table}
+        E(New Metadata File)
+        F[Iceberg Catalog]
+        G(["Pointer Update"])
     end
 
-    subgraph "مرحله ۳: پارتیشن‌بندی و بهینه‌سازی"
-        H{"Partition Transform: days(event_timestamp)"}
-        I[فایل‌های Parquet در پارتیشن‌های روزانه]
+    subgraph "Stage 3 Partitioning"
+        H{"Hidden Partitioning Transform"}
+        I[Daily Partitioned Files]
     end
 
-    subgraph "مرحله ۴: خواندن بهینه داده"
-        J[کاربر/ابزار BI]
-        K{موتور کوئری (Trino/Spark)}
-        L{"بررسی آمار (min/max) در مانیفست‌ها"}
+    subgraph "Stage 4 Optimized Read"
+        J[User or BI Tool]
+        K{Query Engine}
+        L{"Data Skipping Check"}
     end
 
-    A -- "۱. خواندن داده" --> B
-    B -- "۲. پاکسازی و تبدیل داده (ETL)" --> C
-    C -- "۳. نوشتن در جدول logs" --> D
-    D -- "۴. ایجاد فایل فراداده جدید" --> E
-    D -- "۷. پارتیشن‌بندی پنهان" --> H
-    E -- "۵. درخواست آپدیت" --> F
-    F -- "۶. آپدیت اتمی اشاره‌گر (CAS)" --> G
-    H -- "مقدار 2023-10-23T14:00 به 2023-10-23 تبدیل می‌شود" --> I
-    J -- "۸. کوئری: WHERE level = ERROR" --> K
-    K -- "۹. درخواست فراداده از کاتالوگ" --> F
-    K -- "۱۰. دریافت آدرس فراداده فعلی" --> G
-    K -- "۱۱. اعمال Data Skipping" --> L
-    L -- "فقط فایل‌های حاوی ERROR خوانده می‌شوند" --> I
+    A -- "1. Read Data" --> B
+    B -- "2. Transform Data" --> C
+    C -- "3. Write to Table" --> D
+    D -- "4. Create New Metadata" --> E
+    D -- "7. Apply Hidden Partitioning" --> H
+    E -- "5. Request Update" --> F
+    F -- "6. Atomic Pointer Swap" --> G
+    H -- "Transform Value" --> I
+    J -- "8. Run Query" --> K
+    K -- "9. Get Metadata Location" --> F
+    K -- "10. Receive Pointer" --> G
+    K -- "11. Apply Data Skipping" --> L
+    L -- "Read only relevant files" --> I
 
     style F fill:#f9f,stroke:#333,stroke-width:2px
     style G fill:#f9f,stroke:#333,stroke-width:2px
