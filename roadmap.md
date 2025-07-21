@@ -91,7 +91,34 @@ docker-compose up -d
 
 ---
 
-## مرحله ۳: ایجاد اسکریپت Spark
+## مرحله ۳: درج داده در Elasticsearch
+
+به آدرس `http://localhost:5601` بروید تا به Kibana دسترسی پیدا کنید. سپس به بخش **Dev Tools** رفته و دستورات زیر را برای ایجاد ایندکس و درج داده‌های نمونه اجرا کنید.
+
+```bash
+# ایجاد ایندکس با نگاشت (mapping) صحیح
+PUT /app_logs
+{
+  "mappings": {
+    "properties": {
+      "ts": { "type": "date" },
+      "level": { "type": "keyword" },
+      "message": { "type": "text" }
+    }
+  }
+}
+
+# درج دو رکورد نمونه
+POST /app_logs/_doc
+{ "ts": "2023-10-27T10:00:00Z", "level": "INFO", "message": "User logged in" }
+
+POST /app_logs/_doc
+{ "ts": "2023-10-27T10:05:00Z", "level": "WARNING", "message": "Disk space is running low" }
+```
+
+---
+
+## مرحله ۴: ایجاد اسکریپت Spark
 
 یک فایل پایتون در پوشه `scripts` به نام `01_elastic_to_iceberg.py` ایجاد کرده و کدهای زیر را در آن قرار می‌دهیم.
 
@@ -159,7 +186,7 @@ if __name__ == "__main__":
 
 ---
 
-## مرحله ۴: نحوه اجرا
+## مرحله ۵: نحوه اجرا
 
 1.  فایل `docker-compose.yml` و `roadmap.md` را در ریشه پروژه ایجاد کنید.
 2.  پوشه `scripts` را بسازید و فایل `01_elastic_to_iceberg.py` را در آن قرار دهید.
