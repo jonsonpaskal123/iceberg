@@ -320,10 +320,10 @@ graph TD
     E --> I
     I --> M
 
-    style C fill:#ccf,stroke:#333,stroke-width:2px
-    style G fill:#ccf,stroke:#333,stroke-width:2px
-    style K fill:#ccf,stroke:#333,stroke-width:2px
-    style O fill:#cfc,stroke:#333,stroke-width:2px
+    style C fill:#e6f2ff,stroke:#333,stroke-width:2px
+    style G fill:#e6f2ff,stroke:#333,stroke-width:2px
+    style K fill:#e6f2ff,stroke:#333,stroke-width:2px
+    style O fill:#d9f7d9,stroke:#333,stroke-width:2px
 ```
 
 **توضیح مراحل:**
