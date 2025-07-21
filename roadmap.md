@@ -194,7 +194,7 @@ if __name__ == "__main__":
 5.  اسکریپت Spark را با دستور زیر اجرا کنید:
     ```bash
     docker exec spark-runner spark-submit \
-      --packages org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3,org.apache.iceberg:iceberg-spark-runtime-3.4_2.12:1.4.2,org.projectnessie:nessie-spark-extensions-3.4_2.12:0.75.0 \
+      --packages org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3,org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.4.2,org.projectnessie.nessie-integrations:nessie-spark-extensions-3.5_2.12:0.75.0 \
       /home/jovyan/work/scripts/01_elastic_to_iceberg.py
     ```
 
