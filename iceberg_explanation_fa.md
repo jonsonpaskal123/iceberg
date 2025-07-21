@@ -197,18 +197,18 @@ graph TD
         L{"Data Skipping Check"}
     end
 
-    A -- "1. Read Data" --> B
-    B -- "2. Transform Data" --> C
-    C -- "3. Write to Table" --> D
-    D -- "4. Create New Metadata" --> E
-    D -- "7. Apply Hidden Partitioning" --> H
-    E -- "5. Request Update" --> F
-    F -- "6. Atomic Pointer Swap" --> G
+    A -- "Read Data" --> B
+    B -- "Transform Data" --> C
+    C -- "Write to Table" --> D
+    D -- "Create New Metadata" --> E
+    D -- "Apply Hidden Partitioning" --> H
+    E -- "Request Update" --> F
+    F -- "Atomic Pointer Swap" --> G
     H -- "Transform Value" --> I
-    J -- "8. Run Query" --> K
-    K -- "9. Get Metadata Location" --> F
-    K -- "10. Receive Pointer" --> G
-    K -- "11. Apply Data Skipping" --> L
+    J -- "Run Query" --> K
+    K -- "Get Metadata Location" --> F
+    K -- "Receive Pointer" --> G
+    K -- "Apply Data Skipping" --> L
     L -- "Read only relevant files" --> I
 
     style F fill:#f9f,stroke:#333,stroke-width:2px
