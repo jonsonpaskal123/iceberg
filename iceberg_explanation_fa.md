@@ -172,44 +172,44 @@ graph LR
 *   **هدف:** ساخت یک خط لوله (pipeline) کامل برای انتقال لاگ‌های برنامه از Elasticsearch به یک جدول آیسبرگ، بهینه‌سازی آن برای تحلیل و نمایش نحوه تعامل مفاهیم کلیدی آیسبرگ.
 
 ```mermaid
-graph TD
-    subgraph "Stage 1 ETL"
-        A["Elasticsearch Index"]
-        B{Spark Job}
-        C(Ready DataFrame)
+graph LR
+    subgraph "مرحله ۱: ETL"
+        A["ایندکس Elasticsearch"]
+        B{پروسه Spark}
+        C(دیتافریم آماده)
     end
 
-    subgraph "Stage 2 Write to Iceberg"
-        D{Iceberg Table}
-        E(New Metadata File)
-        F[Iceberg Catalog]
-        G(["Pointer Update"])
+    subgraph "مرحله ۲: نوشتن در آیسبرگ"
+        D{جدول آیسبرگ}
+        E(فایل متادیتای جدید)
+        F[کاتالوگ آیسبرگ]
+        G(["آپدیت اشاره‌گر"])
     end
 
-    subgraph "Stage 3 Partitioning"
-        H{"Hidden Partitioning Transform"}
-        I[Daily Partitioned Files]
+    subgraph "مرحله ۳: پارتیشن‌بندی"
+        H{"تبدیل پارتیشن‌بندی پنهان"}
+        I[فایل‌های پارتیشن‌بندی شده روزانه]
     end
 
-    subgraph "Stage 4 Optimized Read"
-        J[User or BI Tool]
-        K{Query Engine}
-        L{"Data Skipping Check"}
+    subgraph "مرحله ۴: خواندن بهینه"
+        J[کاربر یا ابزار BI]
+        K{موتور کوئری}
+        L{"بررسی پرش از داده"}
     end
 
-    A -- "Read Data" --> B
-    B -- "Transform Data" --> C
-    C -- "Write to Table" --> D
-    D -- "Create New Metadata" --> E
-    D -- "Apply Hidden Partitioning" --> H
-    E -- "Request Update" --> F
-    F -- "Atomic Pointer Swap" --> G
-    H -- "Transform Value" --> I
-    J -- "Run Query" --> K
-    K -- "Get Metadata Location" --> F
-    K -- "Receive Pointer" --> G
-    K -- "Apply Data Skipping" --> L
-    L -- "Read only relevant files" --> I
+    A -- "خواندن داده" --> B
+    B -- "تبدیل داده" --> C
+    C -- "نوشتن در جدول" --> D
+    D -- "ایجاد متادیتای جدید" --> E
+    D -- "اعمال پارتیشن‌بندی پنهان" --> H
+    E -- "درخواست آپدیت" --> F
+    F -- "تعویض اتمی اشاره‌گر" --> G
+    H -- "تبدیل مقدار" --> I
+    J -- "اجرای کوئری" --> K
+    K -- "دریافت مکان متادیتا" --> F
+    K -- "دریافت اشاره‌گر" --> G
+    K -- "اعمال پرش از داده" --> L
+    L -- "خواندن فقط فایل‌های مرتبط" --> I
 
     style F fill:#f9f,stroke:#333,stroke-width:2px
     style G fill:#f9f,stroke:#333,stroke-width:2px
