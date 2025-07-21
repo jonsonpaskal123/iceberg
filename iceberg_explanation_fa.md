@@ -16,26 +16,33 @@
 
 ```mermaid
 graph TD
+    classDef default fill:#2b2b2b,stroke:#f0f0f0,color:#f0f0f0;
+    classDef storage fill:#4a4a4a,stroke:#f0f0f0,color:#f0f0f0;
+    classDef iceberg fill:#00a8e8,stroke:#f0f0f0,color:#000;
+    classDef engine fill:#9a9a9a,stroke:#f0f0f0,color:#000;
+
     subgraph Data Lake
-        A[ذخیره‌سازی فایل: S3, GCS, HDFS]
+        A[S3, GCS, HDFS]
     end
 
-    subgraph "لایه مدیریتی (Iceberg)"
-        B{فرمت جدول آیسبرگ}
-        B -- مدیریت می‌کند --> A
+    subgraph Management Layer
+        B{Iceberg Table Format}
     end
 
-    subgraph "موتورهای پردازشی"
+    subgraph Processing Engines
         C[Spark]
         D[Trino]
         E[Flink]
     end
 
-    C -- می‌خواند/می‌نویسد --> B
-    D -- می‌خواند/می‌نویسد --> B
-    E -- می‌خواند/می‌نویسد --> B
+    B -- Manages --> A
+    C -- Reads/Writes --> B
+    D -- Reads/Writes --> B
+    E -- Reads/Writes --> B
 
-    style B fill:#f0f0f0,stroke:#333,stroke-width:2px,color:#333
+    class A storage;
+    class B iceberg;
+    class C,D,E engine;
 ```
 
 ---
@@ -82,39 +89,46 @@ graph TD
 
     *نمودار اصلاح شده ساختار فراداده:*
     ```mermaid
-    graph TD
-        subgraph Catalog [کاتالوگ: نقطه شروع]
-            A(Pointer to current metadata)
-        end
+graph TD
+    classDef default fill:#2b2b2b,stroke:#f0f0f0,color:#f0f0f0;
+    classDef catalog fill:#00a8e8,stroke:#f0f0f0,color:#000;
+    classDef metadata fill:#4a4a4a,stroke:#f0f0f0,color:#f0f0f0;
+    classDef manifest fill:#9a9a9a,stroke:#f0f0f0,color:#000;
+    classDef data fill:#c0c0c0,stroke:#f0f0f0,color:#000;
 
-        subgraph Metadata Layer [لایه فراداده]
-            B(table-metadata.json)
-            B -- "شامل آمار کلی، اسکما و لیست مانیفست‌ها" --> C
-        end
-        
-        subgraph Manifest Layer [لایه مانیفست]
-            C(manifest-list.avro)
-            C -- "شامل لیست فایل‌های مانیفست و آمار هر کدام (مثلا بازه مقادیر پارتیشن)" --> D1
-            C --> D2
-            
-            D1(manifest-file-1.avro)
-            D2(manifest-file-2.avro)
-        end
+    subgraph Catalog
+        A(Current Metadata Pointer)
+    end
 
-        subgraph Data Layer [لایه داده]
-            D1 -- "شامل لیست فایل‌های داده و آمار هر ستون در آنها (min/max)" --> E1
-            D1 --> E2
-            D2 -- "شامل لیست فایل‌های داده و آمار هر ستون در آنها (min/max)" --> E3
-            
-            E1[data-file-1.parquet]
-            E2[data-file-2.parquet]
-            E3[data-file-3.parquet]
-        end
+    subgraph Metadata Layer
+        B(table-metadata.json)
+    end
+    
+    subgraph Manifest Layer
+        C(manifest-list.avro)
+        D1(manifest-file-1.avro)
+        D2(manifest-file-2.avro)
+    end
 
-        A --> B
-        style B fill:#f0f0f0,stroke:#333,stroke-width:2px,color:#333
-        style C fill:#e0e0e0,stroke:#333,stroke-width:2px,color:#333
-    ```
+    subgraph Data Layer
+        E1(data-file-1.parquet)
+        E2(data-file-2.parquet)
+        E3(data-file-3.parquet)
+    end
+
+    A -- Points to --> B
+    B -- Contains list of --> C
+    C -- Contains --> D1
+    C -- Contains --> D2
+    D1 -- Tracks --> E1
+    D1 -- Tracks --> E2
+    D2 -- Tracks --> E3
+
+    class A catalog;
+    class B metadata;
+    class C,D1,D2 manifest;
+    class E1,E2,E3 data;
+```
 
 *   **چگونه کار می‌کند؟**
     در هر سطح از این هرم، آیسبرگ آمارهای دقیقی (مانند مقادیر حداقل و حداکثر برای هر ستون در هر فایل داده) را ذخیره می‌کند.
@@ -137,10 +151,21 @@ graph TD
 
 ```mermaid
 graph LR
-    A[کاربر کلیک می‌کند] --> B(Apache Kafka);
+    classDef default fill:#2b2b2b,stroke:#f0f0f0,color:#f0f0f0;
+    classDef source fill:#4a4a4a,stroke:#f0f0f0,color:#f0f0f0;
+    classDef process fill:#9a9a9a,stroke:#f0f0f0,color:#000;
+    classDef iceberg fill:#00a8e8,stroke:#f0f0f0,color:#000;
+    classDef datalake fill:#c0c0c0,stroke:#f0f0f0,color:#000;
+
+    A[User Click] --> B(Apache Kafka);
     B --> C{Apache Spark Streaming};
-    C -- پاکسازی و تبدیل --> D[جدول آیسبرگ `clicks`];
-    D -- ذخیره در --> E((Data Lake));
+    C -- Clean and Transform --> D[Iceberg Table: clicks];
+    D -- Store in --> E((Data Lake));
+
+    class A,B source;
+    class C process;
+    class D iceberg;
+    class E datalake;
 ```
 
 ### سناریو ۲: انتقال دسته‌ای (Batch) لاگ‌های تاریخی
@@ -150,9 +175,20 @@ graph LR
 
 ```mermaid
 graph LR
-    A[ایندکس Elasticsearch `historical_logs`] --> B{Apache Spark Batch};
-    B -- خواندن و تبدیل --> C[جدول آیسبرگ `logs_archive`];
-    C -- ذخیره در --> D((Data Lake));
+    classDef default fill:#2b2b2b,stroke:#f0f0f0,color:#f0f0f0;
+    classDef source fill:#4a4a4a,stroke:#f0f0f0,color:#f0f0f0;
+    classDef process fill:#9a9a9a,stroke:#f0f0f0,color:#000;
+    classDef iceberg fill:#00a8e8,stroke:#f0f0f0,color:#000;
+    classDef datalake fill:#c0c0c0,stroke:#f0f0f0,color:#000;
+
+    A[Elasticsearch Index: historical_logs] --> B{Apache Spark Batch};
+    B -- Read and Transform --> C[Iceberg Table: logs_archive];
+    C -- Store in --> D((Data Lake));
+
+    class A source;
+    class B process;
+    class C iceberg;
+    class D datalake;
 ```
 
 ### سناریو ۳: آرشیو داده‌های پرسنلی
@@ -162,9 +198,20 @@ graph LR
 
 ```mermaid
 graph LR
-    A[ایندکس Elasticsearch `personnel_records`] --> B{Apache Spark Batch};
-    B -- پاکسازی و امن‌سازی --> C[جدول آیسبرگ `employee_history`];
-    C -- ذخیره در --> D((Data Lake));
+    classDef default fill:#2b2b2b,stroke:#f0f0f0,color:#f0f0f0;
+    classDef source fill:#4a4a4a,stroke:#f0f0f0,color:#f0f0f0;
+    classDef process fill:#9a9a9a,stroke:#f0f0f0,color:#000;
+    classDef iceberg fill:#00a8e8,stroke:#f0f0f0,color:#000;
+    classDef datalake fill:#c0c0c0,stroke:#f0f0f0,color:#000;
+
+    A[Elasticsearch Index: personnel_records] --> B{Apache Spark Batch};
+    B -- Clean and Secure --> C[Iceberg Table: employee_history];
+    C -- Store in --> D((Data Lake));
+
+    class A source;
+    class B process;
+    class C iceberg;
+    class D datalake;
 ```
 
 ### سناریو ۴: خط لوله کامل ETL از Elasticsearch به Lakehouse
@@ -173,6 +220,12 @@ graph LR
 
 ```mermaid
 graph TD
+    classDef default fill:#2b2b2b,stroke:#f0f0f0,color:#f0f0f0;
+    classDef etl fill:#4a4a4a,stroke:#f0f0f0,color:#f0f0f0;
+    classDef write fill:#00a8e8,stroke:#f0f0f0,color:#000;
+    classDef partition fill:#9a9a9a,stroke:#f0f0f0,color:#000;
+    classDef read fill:#c0c0c0,stroke:#f0f0f0,color:#000;
+
     subgraph "Stage 1 ETL"
         A["Elasticsearch Index"]
         B{Spark Job}
@@ -211,10 +264,10 @@ graph TD
     K -- "11. Apply Data Skipping" --> L
     L -- "Read only relevant files" --> I
 
-    style F fill:#f9f,stroke:#333,stroke-width:2px
-    style G fill:#f9f,stroke:#333,stroke-width:2px
-    style H fill:#ccf,stroke:#333,stroke-width:2px
-    style L fill:#cfc,stroke:#333,stroke-width:2px
+    class A,B,C etl;
+    class D,E,F,G write;
+    class H,I partition;
+    class J,K,L read;
 ```
 
 **شرح مراحل:**
