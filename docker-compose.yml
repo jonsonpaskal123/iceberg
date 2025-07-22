@@ -43,5 +43,5 @@ services:
       - minio
       - elasticsearch
     volumes:
-      - ./scripts:/opt/bitnami/spark/scripts
+      - ./iceberg_project:/home/jovyan/work/iceberg_project
     command: tail -f /dev/null
