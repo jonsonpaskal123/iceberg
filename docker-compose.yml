@@ -36,12 +36,12 @@ services:
     command: server /data --console-address ":9001"
 
   spark-runner:
-    image: jupyter/pyspark-notebook:latest
+    image: bitnami/spark:latest
     container_name: spark-runner
     depends_on:
       - nessie
       - minio
       - elasticsearch
     volumes:
-      - ./scripts:/home/jovyan/work/scripts
+      - ./scripts:/opt/bitnami/spark/scripts
     command: tail -f /dev/null
