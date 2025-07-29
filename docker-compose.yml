@@ -44,4 +44,7 @@ services:
       - elasticsearch
     volumes:
       - ./iceberg_project:/home/jovyan/work/iceberg_project
-    command: tail -f /dev/null
+    environment:
+      - SPARK_HOME=/opt/spark
+    command: >
+      bash -c "pip install boto3 && tail -f /dev/null"

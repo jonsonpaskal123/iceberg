@@ -16,10 +16,14 @@
 ## ساختار پروژه
 
 ```
-/iceberg-nessie-project
+/iceberg
 |-- docker-compose.yml
-|-- scripts/
-|   `-- 01_elastic_to_iceberg.py
+|-- iceberg_project/
+|   |-- __init__.py
+|   |-- config.py
+|   |-- elastic_reader.py
+|   |-- iceberg_writer.py
+|   `-- main.py
 `-- roadmap.md
 ```
 
@@ -27,7 +31,7 @@
 
 ## مرحله ۱: ایجاد فایل Docker Compose
 
-محتوای فایل `docker-compose.yml` را به شکل زیر ایجاد می‌کنیم. سرویس Spark طوری تنظیم می‌شود که همیشه در حال اجرا باقی بماند تا بتوانیم اسکریپت خود را در آن اجرا کنیم.
+محتوای فایل `docker-compose.yml` را به شکل زیر ایجاد می‌کنیم. سرویس Spark طوری تنظیم می‌شود که همیشه در حال اجرا باقی بماند تا بتوانیم اسکریپت خود را در آن اجرا کنیم. (این فایل از قبل موجود است)
 
 ```yaml
 version: '3'
@@ -75,7 +79,7 @@ services:
       - minio
       - elasticsearch
     volumes:
-      - ./scripts:/home/jovyan/work/scripts
+      - ./iceberg_project:/home/jovyan/work/iceberg_project
     command: tail -f /dev/null
 ```
 
@@ -83,7 +87,7 @@ services:
 
 ## مرحله ۲: بالا آوردن سرویس‌ها
 
-با استفاده از دستور زیر، تمام سرویس‌ها را راه‌اندازی می‌کنیم.
+با استفاده از دستور زیر، تمام سرویس‌ها را راه‌اندازی می‌کنیم. (این مرحله قبلاً انجام شده است)
 
 ```bash
 docker-compose up -d
@@ -128,79 +132,18 @@ POST /app_logs/_doc
 
 ---
 
-## مرحله ۴: ایجاد اسکریپت Spark
+## مرحله ۴: اجرای اسکریپت Spark
 
-یک فایل پایتون در پوشه `scripts` به نام `01_elastic_to_iceberg.py` ایجاد کرده و کدهای زیر را در آن قرار می‌دهیم.
-
-```python
-from pyspark.sql import SparkSession
-
-def main():
-    spark = SparkSession.builder \
-        .appName("Elastic-to-Iceberg") \
-        .master("local[*]") \
-        .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions,org.projectnessie.spark.extensions.NessieSparkSessionExtensions") \
-        .config("spark.sql.catalog.nessie", "org.apache.iceberg.spark.SparkCatalog") \
-        .config("spark.sql.catalog.nessie.uri", "http://nessie:19120/api/v1") \
-        .config("spark.sql.catalog.nessie.ref", "main") \
-        .config("spark.sql.catalog.nessie.authentication.type", "NONE") \
-        .config("spark.sql.catalog.nessie.catalog-impl", "org.apache.iceberg.nessie.NessieCatalog") \
-        .config("spark.sql.catalog.nessie.warehouse", "s3a://warehouse") \
-        .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
-        .config("spark.hadoop.fs.s3a.access.key", "admin") \
-        .config("spark.hadoop.fs.s3a.secret.key", "password") \
-        .config("spark.hadoop.fs.s3a.path.style.access", "true") \
-        .getOrCreate()
-
-    print("Spark session created successfully.")
-
-    # خواندن داده از Elasticsearch
-    print("Reading data from Elasticsearch...")
-    elastic_df = spark.read.format("org.elasticsearch.spark.sql") \
-        .option("es.nodes", "elasticsearch") \
-        .option("es.port", "9200") \
-        .option("es.resource", "app_logs") \
-        .load()
-    print("Data read from Elasticsearch:")
-    elastic_df.show()
-
-    # ایجاد جدول آیسبرگ
-    print("Creating Iceberg table...")
-    spark.sql("""
-        CREATE TABLE IF NOT EXISTS nessie.logs (
-          ts TIMESTAMP,
-          level STRING,
-          message STRING
-        )
-        PARTITIONED BY (level)
-    """)
-    print("Iceberg table 'nessie.logs' created.")
-
-    # نوشتن داده‌ها در جدول آیسبرگ
-    print("Writing data to Iceberg table...")
-    elastic_df.write.format("iceberg").mode("append").save("nessie.logs")
-    print("Data written to Iceberg successfully.")
-
-    # بررسی داده‌های نوشته شده
-    print("Verifying data in Iceberg table:")
-    iceberg_df = spark.table("nessie.logs")
-    iceberg_df.show()
-
-    spark.stop()
-
-if __name__ == "__main__":
-    main()
-
-```
+اسکریپت اصلی Spark در مسیر `iceberg_project/main.py` قرار دارد. این اسکریپت داده‌ها را از Elasticsearch می‌خواند و در Iceberg ذخیره می‌کند.
 
 ---
 
 ## مرحله ۵: نحوه اجرا
 
-1.  فایل `docker-compose.yml` و `roadmap.md` را در ریشه پروژه ایجاد کنید.
-2.  پوشه `scripts` را بسازید و فایل `01_elastic_to_iceberg.py` را در آن قرار دهید.
-3.  دستور `docker-compose up -d` را اجرا کنید تا تمام سرویس‌ها راه‌اندازی شوند.
-4.  با استفاده از Kibana (`http://localhost:5601`) داده‌های اولیه را در Elasticsearch درج کنید.
+1.  فایل `docker-compose.yml` در ریشه پروژه موجود است.
+2.  پوشه `iceberg_project` حاوی اسکریپت‌های پایتون است.
+3.  دستور `docker-compose up -d` را اجرا کنید تا تمام سرویس‌ها راه‌اندازی شوند. (این مرحله قبلاً انجام شده است)
+4.  با استفاده از Kibana (`http://localhost:5601`) داده‌های اولیه را در Elasticsearch درج کنید. (این مرحله را باید خودتان انجام دهید)
 5.  اسکریپت Spark را با دستور زیر اجرا کنید:
     ```bash
     docker exec spark-runner spark-submit \
