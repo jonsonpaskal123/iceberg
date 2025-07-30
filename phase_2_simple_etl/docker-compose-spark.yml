@@ -1,0 +1,37 @@
+version: '3.7'
+
+networks:
+  iceberg-net:
+    external: true
+
+services:
+  spark-master:
+    image: apache/spark:3.5.1-python3
+    container_name: spark-master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    networks:
+      - iceberg-net
+
+  spark-worker:
+    image: apache/spark:3.5.1-python3
+    depends_on:
+      - spark-master
+    ports:
+      - "8081:8081"
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    networks:
+      - iceberg-net
+
+  spark-submitter:
+    image: apache/spark:3.5.1-python3
+    depends_on:
+      - spark-master
+    volumes:
+      - .:/opt/spark/work-dir
+    command: ["/opt/spark/bin/spark-submit", "--master", "spark://spark-master:7077", "--packages", "org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3", "/opt/spark/work-dir/main.py"]
+    networks:
+      - iceberg-net
