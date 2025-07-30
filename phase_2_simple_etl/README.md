@@ -8,24 +8,25 @@
 
 قبل از شروع این فاز، مطمئن شوید که **فاز ۱** را به طور کامل انجام داده‌اید:
 
-1.  تمام سرویس‌ها با استفاده از `docker-compose` در حال اجرا هستند.
-2.  ایندکس `persons` به همراه ۱۰ رکورد نمونه در Elasticsearch ایجاد شده است.
+۱. سرویس‌های زیرساخت (Elasticsearch, Kibana, MinIO, Nessie) با استفاده از `docker-compose-infra.yml` در حال اجرا هستند.
+۲. ایندکس `persons` به همراه ۱۰ رکورد نمونه در Elasticsearch ایجاد شده است.
 
 ---
 
-## گام ۱: اجرای اسکریپت Spark
+## گام ۱: راه‌اندازی سرویس‌های Spark
 
-اسکریپت اصلی این فاز در فایل `main.py` قرار دارد. این اسکریپت:
-
-1.  به Spark متصل می‌شود.
-2.  یک باکت به نام `phase-2-warehouse` در MinIO ایجاد می‌کند (اگر از قبل وجود نداشته باشد).
-3.  داده‌ها را از ایندکس `persons` در Elasticsearch می‌خواند.
-4.  داده‌ها را با فرمت Parquet در مسیر `persons_data` داخل باکت `phase-2-warehouse` ذخیره می‌کند.
-
-برای اجرای اسکریپت، دستور زیر را در ترمینال اجرا کنید:
+در همین پوشه، فایل `docker-compose-spark.yml` قرار دارد. برای راه‌اندازی سرویس‌های Spark (master و worker)، دستور زیر را در ترمینال اجرا کنید:
 
 ```bash
-docker exec spark-master spark-submit \
+docker-compose -f docker-compose-spark.yml up -d --build
+```
+
+## گام ۲: اجرای اسکریپت Spark
+
+پس از راه‌اندازی سرویس‌های Spark، برای اجرای خط لوله ETL از دستور زیر استفاده کنید:
+
+```bash
+docker exec spark-master /opt/spark/bin/spark-submit \
   --master spark://spark-master:7077 \
   --packages org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3 \
   /opt/spark/work-dir/main.py
@@ -35,7 +36,7 @@ docker exec spark-master spark-submit \
 
 ---
 
-## گام ۲: بررسی نتایج
+## گام ۳: بررسی نتایج
 
 پس از اجرای موفقیت‌آمیز اسکریپت، نتایج را به صورت زیر بررسی کنید:
 
