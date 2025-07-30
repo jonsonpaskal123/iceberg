@@ -41,12 +41,12 @@ def main():
         print("Spark session created successfully.")
 
         # 2. Read data from Elasticsearch
-        elastic_df = read_from_elastic(spark, "app_logs")
+        elastic_df = read_from_elastic(spark, "persons")
 
         # 3. Define Iceberg table properties
-        table_name = "nessie.logs"
-        schema = "ts TIMESTAMP, level STRING, message STRING"
-        partition_by = "level"
+        table_name = "nessie.persons"
+        schema = "person_id INT, first_name STRING, last_name STRING, email STRING, city STRING"
+        partition_by = "city"
 
         # 4. Create Iceberg table
         create_iceberg_table(spark, table_name, schema, partition_by)

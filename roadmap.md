@@ -45,36 +45,54 @@ docker-compose up -d
 
 ---
 
-## مرحله ۲: درج داده‌های نمونه در Elasticsearch
+## مرحله ۲: درج داده‌های نمونه افراد در Elasticsearch
 
-به آدرس `http://localhost:5601` بروید تا به Kibana دسترسی پیدا کنید. سپس به بخش **Dev Tools** رفته و دستورات زیر را برای ایجاد ایندکس و درج داده‌های نمونه اجرا کنید.
+به آدرس `http://localhost:5601` بروید تا به Kibana دسترسی پیدا کنید. سپس به بخش **Dev Tools** رفته و دستورات زیر را برای ایجاد ایندکس و درج ۱۰ رکورد نمونه از افراد اجرا کنید.
 
 ```json
 # ایجاد ایندکس با نگاشت (mapping) صحیح
-PUT /app_logs
+PUT /persons
 {
   "mappings": {
     "properties": {
-      "ts": { "type": "date" },
-      "level": { "type": "keyword" },
-      "message": { "type": "text" }
+      "person_id": { "type": "integer" },
+      "first_name": { "type": "text" },
+      "last_name": { "type": "text" },
+      "email": { "type": "keyword" },
+      "city": { "type": "keyword" }
     }
   }
 }
 
-# درج دو رکورد نمونه
-POST /app_logs/_doc
-{ "ts": "2023-10-27T10:00:00Z", "level": "INFO", "message": "User logged in" }
-
-POST /app_logs/_doc
-{ "ts": "2023-10-27T10:05:00Z", "level": "WARNING", "message": "Disk space is running low" }
+# درج ۱۰ رکورد نمونه با استفاده از Bulk API
+POST /persons/_bulk
+{ "index": { "_id": "1" } }
+{ "person_id": 1, "first_name": "آرش", "last_name": "رضایی", "email": "arash.rezaei@example.com", "city": "تهران" }
+{ "index": { "_id": "2" } }
+{ "person_id": 2, "first_name": "سارا", "last_name": "محمدی", "email": "sara.mohammadi@example.com", "city": "اصفهان" }
+{ "index": { "_id": "3" } }
+{ "person_id": 3, "first_name": "علی", "last_name": "احمدی", "email": "ali.ahmadi@example.com", "city": "شیراز" }
+{ "index": { "_id": "4" } }
+{ "person_id": 4, "first_name": "مریم", "last_name": "حسینی", "email": "maryam.hosseini@example.com", "city": "تهران" }
+{ "index": { "_id": "5" } }
+{ "person_id": 5, "first_name": "رضا", "last_name": "کریمی", "email": "reza.karimi@example.com", "city": "مشهد" }
+{ "index": { "_id": "6" } }
+{ "person_id": 6, "first_name": "فاطمه", "last_name": "صادقی", "email": "fatemeh.sadeghi@example.com", "city": "تبریز" }
+{ "index": { "_id": "7" } }
+{ "person_id": 7, "first_name": "حسین", "last_name": "مرادی", "email": "hossein.moradi@example.com", "city": "اصفهان" }
+{ "index": { "_id": "8" } }
+{ "person_id": 8, "first_name": "زهرا", "last_name": "جعفری", "email": "zahra.jafari@example.com", "city": "شیراز" }
+{ "index": { "_id": "9" } }
+{ "person_id": 9, "first_name": "مهدی", "last_name": "کاظمی", "email": "mehdi.kazemi@example.com", "city": "تهران" }
+{ "index": { "_id": "10" } }
+{ "person_id": 10, "first_name": "نگار", "last_name": "قاسمی", "email": "negar.ghasemi@example.com", "city": "کرج" }
 ```
 
 ---
 
 ## مرحله ۳: اجرای خط لوله ETL
 
-اسکریپت اصلی Spark در مسیر `iceberg_project/main.py` قرار دارد. این اسکریپت داده‌ها را از Elasticsearch می‌خواند و در جدول آیسبرگ ذخیره می‌کند.
+اسکریپت اصلی Spark در مسیر `iceberg_project/main.py` قرار دارد. این اسکریپت داده‌ها را از ایندکس `persons` در Elasticsearch می‌خواند و در جدول آیسبرگ ذخیره می‌کند.
 
 برای اجرای اسکریپت، از دستور زیر استفاده کنید:
 
@@ -88,9 +106,9 @@ docker exec spark-runner spark-submit \
 
 ## مرحله ۴: بررسی نتایج
 
-*   **در MinIO:** به آدرس `http://localhost:9001` بروید. باید یک باکت به نام `warehouse` و در داخل آن، پوشه‌ای به نام `logs` را ببینید که حاوی فایل‌های داده (Parquet) و فراداده (Avro, JSON) جدول آیسبرگ است.
-*   **در Nessie:** به آدرس `http://localhost:19120` بروید. باید یک کامیت جدید در شاخه `main` ببینید که نشان‌دهنده ایجاد جدول `logs` است.
-*   **در کنسول:** خروجی اجرای Spark باید نشان دهد که داده‌ها با موفقیت خوانده و نوشته شده‌اند و در مرحله تأیید، دو رکوردی که درج کرده‌اید نمایش داده می‌شوند.
+*   **در MinIO:** به آدرس `http://localhost:9001` بروید. باید یک باکت به نام `warehouse` و در داخل آن، پوشه‌ای به نام `persons` را ببینید که حاوی فایل‌های داده جدول آیسبرگ است.
+*   **در Nessie:** به آدرس `http://localhost:19120` بروید. باید یک کامیت جدید در شاخه `main` ببینید که نشان‌دهنده ایجاد جدول `persons` است.
+*   **در کنسول:** خروجی اجرای Spark باید نشان دهد که داده‌ها با موفقیت خوانده و نوشته شده‌اند و در مرحله تأیید، ۱۰ رکوردی که درج کرده‌اید نمایش داده می‌شوند.
 
 ---
 
@@ -99,11 +117,11 @@ docker exec spark-runner spark-submit \
 برای تست قابلیت‌های آیسبرگ، چند رکورد جدید در Elasticsearch درج کنید:
 
 ```json
-POST /app_logs/_doc
-{ "ts": "2023-10-27T11:00:00Z", "level": "INFO", "message": "Payment processed" }
-
-POST /app_logs/_doc
-{ "ts": "2023-10-27T11:15:00Z", "level": "ERROR", "message": "Failed to connect to database" }
+POST /persons/_bulk
+{ "index": { "_id": "11" } }
+{ "person_id": 11, "first_name": "کیان", "last_name": "اکبری", "email": "kian.akbari@example.com", "city": "اهواز" }
+{ "index": { "_id": "12" } }
+{ "person_id": 12, "first_name": "هستی", "last_name": "نوری", "email": "hasti.nouri@example.com", "city": "رشت" }
 ```
 
 سپس اسکریپت Spark را در **مرحله ۳ دوباره** اجرا کنید.
@@ -112,41 +130,41 @@ POST /app_logs/_doc
 
 *   آیسبرگ به طور خودکار داده‌های جدید را به جدول اضافه می‌کند (`append`).
 *   یک کامیت جدید در Nessie ثبت می‌شود.
-*   در خروجی Spark، باید هر چهار رکورد را ببینید.
+*   در خروجی Spark، باید هر ۱۲ رکورد را ببینید.
 
 ---
 
 ## مرحله ۶: سفر در زمان (Time Travel)
 
-برای مشاهده قدرت آیسبرگ، می‌توانید به نسخه قبلی جدول برگردید. ابتدا باید شناسه کامیت (Commit ID) قدیمی را از رابط کاربری Nessie یا از طریق API آن پیدا کنید.
+برای مشاهده قدرت آیسبرگ، می‌توانید به نسخه قبلی جدول برگردید. ابتدا باید شناسه کامیت (Commit ID) قدیمی را از رابط کاربری Nessie پیدا کنید.
 
-سپس می‌توانید یک اسکریپت Spark جدید بنویسید یا از `spark-shell` استفاده کنید تا به نسخه قبلی دسترسی پیدا کنید:
+سپس می‌توانید از `spark-shell` استفاده کنید تا به نسخه قبلی دسترسی پیدا کنید:
 
 ```python
 # مثال برای خواندن از یک کامیت خاص
 df = spark.read \
     .option("as-of-commit", "<COMMIT_ID_FROM_NESSIE>") \
-    .table("nessie.logs")
+    .table("nessie.persons")
 
 df.show()
 ```
 
-این کوئری فقط دو رکورد اولیه را به شما نشان خواهد داد.
+این کوئری فقط ۱۰ رکورد اولیه را به شما نشان خواهد داد.
 
 ---
 
 ## مرحله ۷: تکامل اسکما (Schema Evolution)
 
-فرض کنید می‌خواهیم یک ستون جدید به نام `hostname` به جدول اضافه کنیم.
+فرض کنید می‌خواهیم یک ستون جدید به نام `country` به جدول اضافه کنیم.
 
-1.  **یک رکورد جدید با فیلد `hostname` در Elasticsearch درج کنید:**
+1.  **یک رکورد جدید با فیلد `country` در Elasticsearch درج کنید:**
     ```json
-    POST /app_logs/_doc
-    { "ts": "2023-10-27T12:00:00Z", "level": "INFO", "message": "New server online", "hostname": "server-01" }
+    POST /persons/_doc
+    { "person_id": 13, "first_name": "ماهان", "last_name": "صالحی", "email": "mahan.salehi@example.com", "city": "یزد", "country": "ایران" }
     ```
 
 2.  **اسکریپت Spark را برای ادغام اسکما تغییر دهید:**
-    قبل از نوشتن داده، باید به Spark بگویید که اسکما را ادغام کند. این کار با افزودن یک آپشن به دستور `write` انجام می‌شود. **(توجه: این تغییر باید در کد `iceberg_writer.py` اعمال شود)**
+    این کار با افزودن یک آپشن به دستور `write` در فایل `iceberg_writer.py` انجام می‌شود.
     ```python
     # در فایل iceberg_writer.py
     df.write \
@@ -160,7 +178,6 @@ df.show()
 
 **نتیجه:**
 
-*   جدول `logs` حالا یک ستون جدید به نام `hostname` دارد.
+*   جدول `persons` حالا یک ستون جدید به نام `country` دارد.
 *   رکوردهای قدیمی در این ستون مقدار `null` خواهند داشت.
-*   رکورد جدید مقدار `server-01` را خواهد داشت.
-*   این تغییر بدون نیاز به بازنویسی کل جدول انجام می‌شود.
+*   رکورد جدید مقدار `ایران` را خواهد داشت.
