@@ -25,9 +25,10 @@
 برای اجرای اسکریپت، دستور زیر را در ترمینال اجرا کنید:
 
 ```bash
-docker exec spark-runner spark-submit \
+docker exec spark-master spark-submit \
+  --master spark://spark-master:7077 \
   --packages org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3 \
-  /home/jovyan/work/phase_2_simple_etl/main.py
+  /opt/spark/work-dir/main.py
 ```
 
 **نکته:** در این مرحله، ما فقط از پکیج `elasticsearch-spark` استفاده می‌کنیم، زیرا هنوز با Iceberg و Nessie کاری نداریم.
