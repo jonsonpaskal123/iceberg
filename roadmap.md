@@ -59,6 +59,7 @@ PUT /persons
       "first_name": { "type": "text" },
       "last_name": { "type": "text" },
       "email": { "type": "keyword" },
+      "code_melli": { "type": "keyword" },
       "city": { "type": "keyword" }
     }
   }
@@ -67,25 +68,25 @@ PUT /persons
 # درج ۱۰ رکورد نمونه با استفاده از Bulk API
 POST /persons/_bulk
 { "index": { "_id": "1" } }
-{ "person_id": 1, "first_name": "آرش", "last_name": "رضایی", "email": "arash.rezaei@example.com", "city": "تهران" }
+{ "person_id": 1, "first_name": "آرش", "last_name": "رضایی", "email": "arash.rezaei@example.com", "code_melli": "0012345678", "city": "تهران" }
 { "index": { "_id": "2" } }
-{ "person_id": 2, "first_name": "سارا", "last_name": "محمدی", "email": "sara.mohammadi@example.com", "city": "اصفهان" }
+{ "person_id": 2, "first_name": "سارا", "last_name": "محمدی", "email": "sara.mohammadi@example.com", "code_melli": "0023456789", "city": "اصفهان" }
 { "index": { "_id": "3" } }
-{ "person_id": 3, "first_name": "علی", "last_name": "احمدی", "email": "ali.ahmadi@example.com", "city": "شیراز" }
+{ "person_id": 3, "first_name": "علی", "last_name": "احمدی", "email": "ali.ahmadi@example.com", "code_melli": "0034567890", "city": "شیراز" }
 { "index": { "_id": "4" } }
-{ "person_id": 4, "first_name": "مریم", "last_name": "حسینی", "email": "maryam.hosseini@example.com", "city": "تهران" }
+{ "person_id": 4, "first_name": "مریم", "last_name": "حسینی", "email": "maryam.hosseini@example.com", "code_melli": "0045678901", "city": "تهران" }
 { "index": { "_id": "5" } }
-{ "person_id": 5, "first_name": "رضا", "last_name": "کریمی", "email": "reza.karimi@example.com", "city": "مشهد" }
+{ "person_id": 5, "first_name": "رضا", "last_name": "کریمی", "email": "reza.karimi@example.com", "code_melli": "0056789012", "city": "مشهد" }
 { "index": { "_id": "6" } }
-{ "person_id": 6, "first_name": "فاطمه", "last_name": "صادقی", "email": "fatemeh.sadeghi@example.com", "city": "تبریز" }
+{ "person_id": 6, "first_name": "فاطمه", "last_name": "صادقی", "email": "fatemeh.sadeghi@example.com", "code_melli": "0067890123", "city": "تبریز" }
 { "index": { "_id": "7" } }
-{ "person_id": 7, "first_name": "حسین", "last_name": "مرادی", "email": "hossein.moradi@example.com", "city": "اصفهان" }
+{ "person_id": 7, "first_name": "حسین", "last_name": "مرادی", "email": "hossein.moradi@example.com", "code_melli": "0078901234", "city": "اصفهان" }
 { "index": { "_id": "8" } }
-{ "person_id": 8, "first_name": "زهرا", "last_name": "جعفری", "email": "zahra.jafari@example.com", "city": "شیراز" }
+{ "person_id": 8, "first_name": "زهرا", "last_name": "جعفری", "email": "zahra.jafari@example.com", "code_melli": "0089012345", "city": "شیراز" }
 { "index": { "_id": "9" } }
-{ "person_id": 9, "first_name": "مهدی", "last_name": "کاظمی", "email": "mehdi.kazemi@example.com", "city": "تهران" }
+{ "person_id": 9, "first_name": "مهدی", "last_name": "کاظمی", "email": "mehdi.kazemi@example.com", "code_melli": "0090123456", "city": "تهران" }
 { "index": { "_id": "10" } }
-{ "person_id": 10, "first_name": "نگار", "last_name": "قاسمی", "email": "negar.ghasemi@example.com", "city": "کرج" }
+{ "person_id": 10, "first_name": "نگار", "last_name": "قاسمی", "email": "negar.ghasemi@example.com", "code_melli": "0101234567", "city": "کرج" }
 ```
 
 ---

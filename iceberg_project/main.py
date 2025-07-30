@@ -45,7 +45,7 @@ def main():
 
         # 3. Define Iceberg table properties
         table_name = "nessie.persons"
-        schema = "person_id INT, first_name STRING, last_name STRING, email STRING, city STRING"
+        schema = "person_id INT, first_name STRING, last_name STRING, email STRING, code_melli STRING, city STRING"
         partition_by = "city"
 
         # 4. Create Iceberg table
