@@ -24,7 +24,7 @@
 
 ### گام ۱: راه‌اندازی تمام سرویس‌ها
 
-فایل `docker-compose.yml` در ریشه پروژه قرار دارد. برای راه‌اندازی تمام سرویس‌ها (Elasticsearch, Kibana, MinIO, Nessie, Spark Master, Spark Worker)، دستور زیر را در ترمینال اجرا کنید:
+فایل `docker-compose.yml` در ریشه پروژه قرار دارد. برای راه‌اندازی تمام سرویس‌ها (Elasticsearch, Kibana, MinIO, Nessie, Spark Submitter)، دستور زیر را در ترمینال اجرا کنید:
 
 ```bash
 docker-compose up -d --build
@@ -45,14 +45,9 @@ docker-compose up -d --build
 پس از اطمینان از انجام کامل فاز ۱، برای اجرای خط لوله ETL از دستور زیر استفاده کنید:
 
 ```bash
-docker-compose exec spark-master /opt/spark/bin/spark-submit \
-  --master spark://spark-master:7077 \
-  --packages org.elasticsearch:elasticsearch-spark-30_2.12:8.4.3 \
-  /opt/spark/work-dir/main.py
+docker-compose up -d --build spark-submitter
 ```
 
 ### گام ۲: بررسی نتایج
 
 به رابط کاربری **MinIO** (`http://localhost:9001`) بروید. باید یک باکت به نام `phase-2-warehouse` و داخل آن فایل‌های Parquet را مشاهده کنید.
-
-```
